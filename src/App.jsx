@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ─── MATH ENGINE ───────────────────────────────────────────────────────────────
+// ─── IMPROVED GAME THEORY ENGINE ─────────────────────────────────────────────
+
 const SERVERS = [
   { id: 0, name: "Web Server",    icon: "🌐", vuln: 0.85, damage: 0.60, color: "#f59e0b" },
   { id: 1, name: "Database",      icon: "🗄",  vuln: 0.65, damage: 0.95, color: "#ef4444" },
@@ -8,40 +9,108 @@ const SERVERS = [
   { id: 3, name: "File System",   icon: "📁", vuln: 0.70, damage: 0.55, color: "#06b6d4" },
 ];
 
-function computeRisk(s) { return s.vuln * s.damage; }
+const DEFENSE_EFFECTIVENESS = 1.3; // tuning factor (important)
 
+// Risk
+function computeRisk(s) {
+  return s.vuln * s.damage;
+}
+
+// ✅ Better Stackelberg (minimax-style balancing)
 function stackelbergOptimal() {
+  const risks = SERVERS.map(s => computeRisk(s));
+  const maxRisk = Math.max(...risks);
+
+  let defense = risks.map(r => r / maxRisk);
+
+  // Normalize to sum = 1
+  const sum = defense.reduce((a, b) => a + b, 0);
+  defense = defense.map(d => d / sum);
+
+  // 🔥 Minimax refinement (balance top risks)
+  for (let iter = 0; iter < 20; iter++) {
+    const scores = SERVERS.map((s, i) =>
+      s.vuln * s.damage * (1 - defense[i])
+    );
+
+    const maxScore = Math.max(...scores);
+
+    // Push defense toward highest score
+    defense = defense.map((d, i) =>
+      d + 0.05 * (scores[i] / maxScore)
+    );
+
+    // Normalize again
+    const sum = defense.reduce((a, b) => a + b, 0);
+    defense = defense.map(d => d / sum);
+  }
+
+  return defense;
+}
+
+// Nash (baseline)
+function nashMixed() {
   const risks = SERVERS.map(computeRisk);
   const total = risks.reduce((a, b) => a + b, 0);
   return risks.map(r => r / total);
 }
 
-function nashMixed() {
-  // Proportional to vulnerability only
-  const vulns = SERVERS.map(s => s.vuln);
-  const total = vulns.reduce((a, b) => a + b, 0);
-  return vulns.map(v => v / total);
-}
-
+// ✅ Probabilistic attacker
 function smartAttack(defense) {
-  // Attacker maximizes: damage * vulnerability * (1 - defense)
-  const scores = SERVERS.map((s, i) => s.damage * s.vuln * (1 - defense[i]));
-  const max = Math.max(...scores);
-  const idx = scores.indexOf(max);
-  return { target: idx, scores, expectedGain: max };
+  const scores = SERVERS.map((s, i) =>
+    s.damage * s.vuln * (1 - defense[i])
+  );
+
+  const total = scores.reduce((a, b) => a + b, 0);
+  const probs = scores.map(s => s / total);
+
+  let r = Math.random();
+  let cumulative = 0;
+
+  for (let i = 0; i < probs.length; i++) {
+    cumulative += probs[i];
+    if (r <= cumulative) {
+      return { target: i, scores, expectedGain: scores[i] };
+    }
+  }
+
+  return { target: probs.length - 1, scores, expectedGain: scores.at(-1) };
 }
 
+// Random attacker
 function randomAttack() {
-  return { target: Math.floor(Math.random() * 4), scores: [0.25, 0.25, 0.25, 0.25], expectedGain: null };
+  return {
+    target: Math.floor(Math.random() * SERVERS.length),
+    scores: Array(SERVERS.length).fill(1 / SERVERS.length),
+    expectedGain: null
+  };
 }
 
+// ✅ Correct simulation
 function simulateRound(defense, attackerMode) {
-  const atk = attackerMode === "smart" ? smartAttack(defense) : randomAttack();
+  const atk =
+    attackerMode === "smart"
+      ? smartAttack(defense)
+      : randomAttack();
+
   const s = SERVERS[atk.target];
-  const defProb = defense[atk.target];
-  const blocked = Math.random() < defProb;
-  const actualDamage = blocked ? 0 : s.damage * s.vuln;
-  return { ...atk, blocked, actualDamage, server: s };
+  const d = defense[atk.target];
+
+  // 🔥 Correct probability model
+  let successProb = s.vuln * (1 - DEFENSE_EFFECTIVENESS * d);
+
+  // clamp
+  successProb = Math.max(0, Math.min(1, successProb));
+
+  const success = Math.random() < successProb;
+
+  return {
+    ...atk,
+    blocked: !success,
+    actualDamage: success ? s.damage : 0,
+    server: s,
+    successProb
+  };
 }
 
 // ─── PARTICLE SYSTEM ──────────────────────────────────────────────────────────
@@ -310,7 +379,9 @@ export default function StackelbergGame() {
 
       {/* Particle canvas */}
       <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} />
-
+const defenseEffectiveness = 1.2; // tuning factor
+const successProb = s.vuln * (1 - defenseEffectiveness * defProb);
+const successProb = Math.max(0, Math.min(1, ...));
       {/* Grid bg */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
