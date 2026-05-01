@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-// ─── IMPROVED GAME THEORY ENGINE ─────────────────────────────────────────────
+//GAME THEORY ENGINE 
 
 const SERVERS = [
   { id: 0, name: "Web Server",    icon: "🌐", vuln: 0.85, damage: 0.60, color: "#f59e0b" },
@@ -9,14 +9,14 @@ const SERVERS = [
   { id: 3, name: "File System",   icon: "📁", vuln: 0.70, damage: 0.55, color: "#06b6d4" },
 ];
 
-const DEFENSE_EFFECTIVENESS = 1.3; // tuning factor (important)
+const DEFENSE_EFFECTIVENESS = 1.3; // tuning factor 
 
 // Risk
 function computeRisk(s) {
   return s.vuln * s.damage;
 }
 
-// ✅ Better Stackelberg (minimax-style balancing)
+// Better Stackelberg (minimax-style balancing)
 function stackelbergOptimal() {
   const risks = SERVERS.map(s => computeRisk(s));
   const maxRisk = Math.max(...risks);
@@ -27,7 +27,7 @@ function stackelbergOptimal() {
   const sum = defense.reduce((a, b) => a + b, 0);
   defense = defense.map(d => d / sum);
 
-  // 🔥 Minimax refinement (balance top risks)
+  // Minimax refinement (balance top risks)
   for (let iter = 0; iter < 20; iter++) {
     const scores = SERVERS.map((s, i) =>
       s.vuln * s.damage * (1 - defense[i])
@@ -55,7 +55,7 @@ function nashMixed() {
   return risks.map(r => r / total);
 }
 
-// ✅ Probabilistic attacker
+// Probabilistic attacker
 function smartAttack(defense) {
   const scores = SERVERS.map((s, i) =>
     s.damage * s.vuln * (1 - defense[i])
@@ -86,7 +86,7 @@ function randomAttack() {
   };
 }
 
-// ✅ Correct simulation
+//simulation
 function simulateRound(defense, attackerMode) {
   const atk =
     attackerMode === "smart"
@@ -96,7 +96,7 @@ function simulateRound(defense, attackerMode) {
   const s = SERVERS[atk.target];
   const d = defense[atk.target];
 
-  // 🔥 Correct probability model
+  //probability model
   let successProb = s.vuln * (1 - DEFENSE_EFFECTIVENESS * d);
 
   // clamp
@@ -113,7 +113,7 @@ function simulateRound(defense, attackerMode) {
   };
 }
 
-// ─── PARTICLE SYSTEM ──────────────────────────────────────────────────────────
+//particle system for attack effects
 function useParticles(canvasRef, active) {
   const particles = useRef([]);
   const animRef = useRef(null);
@@ -160,7 +160,7 @@ function useParticles(canvasRef, active) {
   }, [active]);
 }
 
-// ─── SERVER NODE VISUAL ───────────────────────────────────────────────────────
+//server model and UI component
 function ServerNode({ server, defenseLevel, attackScore, isUnderAttack, isDefended, pulseColor }) {
   const risk = computeRisk(server);
   const threatLevel = attackScore !== null ? attackScore / Math.max(...SERVERS.map((s, i) => s.damage * s.vuln)) : 0;
@@ -379,9 +379,7 @@ export default function StackelbergGame() {
 
       {/* Particle canvas */}
       <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} />
-const defenseEffectiveness = 1.2; // tuning factor
-const successProb = s.vuln * (1 - defenseEffectiveness * defProb);
-const successProb = Math.max(0, Math.min(1, ...));
+
       {/* Grid bg */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 0,
