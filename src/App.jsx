@@ -10,6 +10,7 @@ const SERVERS = [
 ];
 
 // Base tuning factor
+// base
 const DEFENSE_EFFECTIVENESS_BASE = 1.3;
 
 // Risk
@@ -110,7 +111,7 @@ function smartAttack(defense) {
   let cumulative = 0;
 
   for (let i = 0; i < probs.length; i++) {
-    cumulative += probs[i];
+    cumulative =cumulative+ probs[i];
     if (r <= cumulative) {
       return { target: i, scores, expectedGain: scores[i] };
     }
